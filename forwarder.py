@@ -39,8 +39,7 @@ print 'Node A Socket bind complete'
 client_to_forwarder.listen(10)
 print 'Node A Socket now listening'
 
-# Added for Lab 7
-# 10. Sending command arp –a from a telnet window on any node should print out the current arp table on that node. Don’t forget to ping nodes C and D from A to fill the arp table.
+# 10. Sending command arp -a from a telnet window on any node should print out the current arp table on that node. Don't forget to ping nodes C and D from A to fille the arp table.
 def printArpTable():
 	print(ARPTable)
 
@@ -120,7 +119,7 @@ def clientthread(conn):
 		ARP = 'arp'
 		PRINT_ARP_TABLE = '-a'
 
-		if user_input[0] == ARP && user_input[1] == PRINT_ARP_TABLE:
+		if (user_input[0] == ARP) and (user_input[1] == PRINT_ARP_TABLE):
 			printArpTable();
 
 		#Adding pingmac
