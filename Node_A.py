@@ -51,7 +51,7 @@ def pingmac(input):
 	else:
 		ip = input
 		# Flag for a row
-		isInARPTable = false
+		isInARPTable = False
 
 		print 'Pinging ' + ip
 
@@ -60,7 +60,7 @@ def pingmac(input):
 			if rowEntry[1] == ip:
 
 				# Set value to true if found in ARP Table
-				isInARPTable = true
+				isInARPTable = True
 
 				print 'IP exists in ARPTable. Sending Message.'
 				pingmac(rowEntry[3])
