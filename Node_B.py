@@ -2,39 +2,41 @@ import socket
 import sys
 from thread import *
 
-HOST = ''        # Symbolic name meaning all available interfaces
-LOCAL_PORT = 8000      # Arbitrary non-privileged port
-
-#Added Node Parameters for Lab 7
-LOCAL_NODE = "A"
-LOCAL_IP = "10.0.100.2"
-LOCAL_MAC = "08:00:28:26:03:93"
-
-# an empty internal ARP table with columns for IP address, MAC and time-to-live.
-ARPTable = []
-
 # Other ports
+PORT_A = 8000
 PORT_B = 8001
 PORT_C = 8002
 PORT_D = 8003
 
+HOST = ''                # Symbolic name meaning all available interfaces
+LOCAL_PORT = PORT_B      # Arbitrary non-privileged port
+
+#Added Node Parameters for Lab 7
+LOCAL_NODE = "B"
+LOCAL_IP = "10.0.100.3"
+LOCAL_MAC = "08:00:27:58:32:0d"
+
+# an empty internal ARP table with columns for IP address, MAC and time-to-live.
+ARPTable = []
+
+
 # Binds local socket to port to make sure that (this) is listening for traffic.
-client_to_Node_A = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-print 'Client to Node A Socket created.'
+client_to_Node_B = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+print 'Client to Node B Socket created.'
 
 #To avoid port reuse problem, the function below is used
-client_to_Node_A.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+client_to_Node_B.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 try:
-	client_to_Node_A.bind((HOST, LOCAL_PORT))
+	client_to_Node_B.bind((HOST, LOCAL_PORT))
 except socket.error , msg:
-	print 'Node A Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
+	print 'Node B Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
 	sys.exit()
 
-print 'Node A Socket bind complete'
+print 'Node B Socket bind complete'
 
-client_to_Node_A.listen(10)
-print 'Node A Socket now listening'
+client_to_Node_B.listen(10)
+print 'Node B Socket now listening'
 
 # Added for Lab 7
 
@@ -82,23 +84,23 @@ def pingmac(input):
 				sys.exit()
 
 			# create a sockets
-			port_a_to_port_b = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			print 'Port A to Port B Socket created.'
-			port_a_to_port_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			print 'Port A to Port C Socket created.'
-			port_a_to_port_d = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			print 'Port A to Port D Socket created.'
+			port_b_to_port_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			print 'Port B to Port A Socket created.'
+			port_b_to_port_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			print 'Port B to Port C Socket created.'
+			port_b_to_port_d = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			print 'Port B to Port D Socket created.'
 
 			# Connect to other nodes
-			port_a_to_port_b.connect((remote_ip, PORT_B))
-			port_a_to_port_c.connect((remote_ip, PORT_C))
-			port_a_to_port_d.connect((remote_ip, PORT_D))
+			port_b_to_port_a.connect((remote_ip, PORT_A))
+			port_b_to_port_c.connect((remote_ip, PORT_C))
+			port_b_to_port_d.connect((remote_ip, PORT_D))
 
 
 			#To avoid port reuse problem, the function below is used
-			port_a_to_port_b.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			port_a_to_port_c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			port_a_to_port_d.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			port_b_to_port_a.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			port_b_to_port_c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			port_b_to_port_d.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 			# Setup message
 			protocal = "ARP"
@@ -113,9 +115,9 @@ def pingmac(input):
 			message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip
 
 			# Send ip to all sockets
-			port_a_to_port_b.send(message)
-			port_a_to_port_c.send(message)
-			port_a_to_port_d.send(message)
+			port_b_to_port_a.send(message)
+			port_b_to_port_c.send(message)
+			port_c_to_port_d.send(message)
 
 # Requirement 5
 def receiveARPRequest(message):
@@ -210,7 +212,7 @@ def clientthread(conn):
 #now keep talking with the client
 while 1:
 	#wait to accept a connection - blocking call
-	conn, addr = client_to_Node_A.accept()
+	conn, addr = client_to_Node_B.accept()
 	print 'Connected with ' + addr[0] + ':' + str(addr[1])
 
 	#start new thread takes 1st argument as a function name to be run, second is the tuple arguments
