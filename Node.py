@@ -36,7 +36,9 @@ def printArpTable():
 	print(ARPTable)
 
 def pingmac(input):
-	input = input[0:-2]
+    #
+	# if input == 'received':
+	# 	print 'pingmac received'
 
 	if input[2] == ':':
 		mac = input
@@ -47,7 +49,7 @@ def pingmac(input):
 			if rowEntry[1] == mac:
 				# Setup Socket
 				node_x_to_node_y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				print 'Node' + LOCAL_NODE + ' to Node ' + rowEntry[0] + ' Socket created.'
+				print 'Node ' + LOCAL_NODE + ' to Node ' + rowEntry[0] + ' Socket created.'
 
 				#To avoid port reuse problem, the function below is used
 				node_x_to_node_y.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -63,16 +65,19 @@ def pingmac(input):
 				# Connect to other nodes
 				node_x_to_node_y.connect((remote_ip, rowEntry[3]))
 
-				node_x_to_node_y.send(mac)
+				msg = mac + " " + LOCAL_NODE + " " + str(LOCAL_PORT)
+
+				print msg
+
+				node_x_to_node_y.send(msg)
 
 				node_x_to_node_y.close # Close Socket
 
-				print 'finish up bro!'
 
 				break # Job Done
 
 	elif input[2] == '.':
-		ip = input
+		ip = input[0:-2]
 
 		# Flag for a row
 		isInARPTable = False
@@ -152,6 +157,7 @@ def pingmac(input):
 
 # Requirement 5
 def receiveARPRequest(incoming_message):
+	global ARPTable
 	print 'Incoming message: '
 	print(incoming_message)
 	if incoming_message[7] == LOCAL_IP:
@@ -175,6 +181,10 @@ def receiveARPRequest(incoming_message):
 				print 'IP not in ARPTable. Adding to ARPTable.'
 				ARPTable.append([incoming_message[8], incoming_message[2], incoming_message[4], incoming_message[9]])
 
+				print "Node " + incoming_message[8] + " added to ARPTable"
+
+				# print (ARPTable)
+
 			print 'Generating Reply'
 			# Setup message
 			protocal = "ARP"
@@ -189,7 +199,7 @@ def receiveARPRequest(incoming_message):
 			source_port = LOCAL_PORT
 
 
-			message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip + source_node + " " + source_port + " end"
+			message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip + " " + source_node + " " + str(source_port) + " end"
 
 			print 'Sending Reply'
 
@@ -206,13 +216,15 @@ def receiveARPRequest(incoming_message):
 			print 'Node '+ LOCAL_NODE + ' to Node '+ incoming_message[8] +  ' Socket created.'
 
 			# Connect to other nodes
-			node_x_to_node_y.connect((remote_ip, incoming_message[9]))
+			node_x_to_node_y.connect((remote_ip, int(incoming_message[9])))
 
 
 			#To avoid port reuse problem, the function below is used
 			node_x_to_node_y.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 			node_x_to_node_y.send(message)
+
+			node_x_to_node_y.close
 
 
 		# Requirement 7
@@ -222,11 +234,12 @@ def receiveARPRequest(incoming_message):
 			print 'Adding message to ARPTable'
 
 			# Add message to ARPTable
-			ARPTable.append(['Node', incoming_message[2], incoming_message[4],'Port '])
+			ARPTable.append([incoming_message[8], incoming_message[2], incoming_message[4],int(incoming_message[9])])
 
 			print 'Message added to ARPTable'
-			print 'Current ARP Table'
-			printArpTable()
+			# print 'Current ARP Table'
+			# printArpTable()
+
 			pingmac(incoming_message[2])
 	# Requirement 6
 	else:
@@ -260,20 +273,46 @@ def clientthread(conn):
 		#Adding pingmac flag
 		USER_INPUT_PINGMAC = 'pingmac'
 
-		if user_input[0] == USER_INPUT_PINGMAC:
+		if user_input[0] == USER_INPUT_PINGMAC and user_input[1] == 'received':
+			print 'pingmac recieved'
+
+		elif user_input[0] == USER_INPUT_PINGMAC:
 			pingmac(user_input[1]) # Paramer is either ip or mac addess
 
 		if user_input[0] == ARP_REQUEST:
 			# Reply to ARP_REQUEST
 			receiveARPRequest(user_input)
 
-		if user_input[0] == ARP and user_input[1] == PRINT_ARP_TABLE:
+		if user_input[0] == ARP and user_input[1][0:-2] == PRINT_ARP_TABLE:
 			print 'Printing ARP Table'
 			printArpTable();
 
-		# if user_input[0][2] == ':':
-		# 	if LOCAL_MAC == user_input[0]:
-		# 		print 'pingmac received'
+		if len(user_input[0]) == 17:
+			if LOCAL_MAC == user_input[0]:
+
+				print 'Sending pingmac received'
+
+				# Set remote_ip
+				try:
+					remote_ip = socket.gethostbyname( 'localhost' )
+				except socket.gaierror:
+					# could not resolve
+					print 'Hostname could not be resolved. Exiting'
+					sys.exit()
+
+				# create a socket
+				node_x_to_node_y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				print 'Node '+ LOCAL_NODE + ' to Node '+ user_input[1] +  ' Socket created.'
+
+				# Connect to other nodes
+				node_x_to_node_y.connect((remote_ip, int(user_input[2])))
+
+
+				#To avoid port reuse problem, the function below is used
+				node_x_to_node_y.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+				node_x_to_node_y.send('pingmac received')
+
 
 
 
