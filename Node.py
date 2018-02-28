@@ -20,7 +20,16 @@ MAC_B = "08:00:27:58:32:0d"
 MAC_C = "08:00:27:58:68:98"
 MAC_D = "00:24:1d:5c:5b:dc"
 
+# LOCAL info
+LOCAL_PORT = ''      # Arbitrary non-privileged port
+LOCAL_NODE = ''
+LOCAL_IP = ''
+LOCAL_MAC = ''
 
+HOST = ''        # Symbolic name meaning all available interfaces
+
+# an empty internal ARP table with columns for IP address, MAC and time-to-live.
+ARPTable = []
 
 # Requirement 10
 def printArpTable():
@@ -62,7 +71,7 @@ def pingmac(input):
 
 				break # Job Done
 
-	else if input[2] == '.':
+	elif input[2] == '.':
 		ip = input
 
 		# Flag for a row
@@ -98,7 +107,7 @@ def pingmac(input):
 
 			# create a sockets
 			port_a_to_port_b = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			print 'Port A to Port B Socket created.'
+			print 'Port ' + str(LOCAL_PORT) +' to Port ' + str(PORT_B)  + ' Socket created.'
 			# port_a_to_port_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			# print 'Port A to Port C Socket created.'
 			# port_a_to_port_d = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -129,7 +138,10 @@ def pingmac(input):
 			source_node = LOCAL_NODE
 			source_port = LOCAL_PORT
 
-			message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip + " " + source_node + " " + source_port + " end"
+			message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip + " " + source_node + " " + str(source_port) + " end"
+
+			print 'Message being sent to Port B'
+			print(message)
 
 			# Send ip to all sockets
 			port_a_to_port_b.send(message)
@@ -140,8 +152,9 @@ def pingmac(input):
 
 # Requirement 5
 def receiveARPRequest(incoming_message):
-
-	if incoming_message[7][0:-2] == LOCAL_IP:
+	print 'Incoming message: '
+	print(incoming_message)
+	if incoming_message[7] == LOCAL_IP:
 		print 'Received ARP from ' + incoming_message[5] + '...replying'
 
 		if incoming_message[1] == "1":
@@ -222,7 +235,7 @@ def receiveARPRequest(incoming_message):
 #Function for handling connections. This will be used to create threads
 def clientthread(conn):
 	#Sending message to connected client
-	conn.send('Welcome to the Node '+ LOCAL_NODE +'. Type something and hit enter\n') #send only takes string
+	conn.send('Welcome to Node '+ LOCAL_NODE +'. Type something and hit enter\n') #send only takes string
 
 	#inifinte loop so that function do not terminate and thread do not end
 	while True:
@@ -273,21 +286,21 @@ def clientthread(conn):
 	#came out of loop
 	conn.close()
 
-def setupSocket(Node):
-
-	# Binds local socket to port to make sure that (this) is listening for traffic.
-	client_to_Node = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	print 'Client to Node ' + Node + ' Socket created.'
-
-	#To avoid port reuse problem, the function below is used
-	client_to_Node.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+# def setupSocket(Node):
+#
+# 	# Binds local socket to port to make sure that (this) is listening for traffic.
+# 	client_to_Node = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# 	print 'Client to Node ' + Node + ' Socket created.'
+#
+# 	#To avoid port reuse problem, the function below is used
+# 	client_to_Node.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 
 def main(Node):
-	HOST = ''        # Symbolic name meaning all available interfaces
-
-	# an empty internal ARP table with columns for IP address, MAC and time-to-live.
-	ARPTable = []
+	global LOCAL_PORT       # Arbitrary non-privileged port
+	global LOCAL_NODE
+	global LOCAL_IP
+	global LOCAL_MAC
 
 	# Set Node Parameters
 	if Node == 'A':
@@ -295,12 +308,12 @@ def main(Node):
 		LOCAL_NODE = Node
 		LOCAL_IP = IP_A
 		LOCAL_MAC = MAC_A
-	else if Node == 'B':
+	elif Node == 'B':
 		LOCAL_PORT = PORT_B      # Arbitrary non-privileged port
 		LOCAL_NODE = Node
 		LOCAL_IP = IP_B
 		LOCAL_MAC = MAC_B
-	else if Node == 'C':
+	elif Node == 'C':
 		LOCAL_PORT = PORT_C      # Arbitrary non-privileged port
 		LOCAL_NODE = Node
 		LOCAL_IP = IP_C
@@ -311,38 +324,38 @@ def main(Node):
 		LOCAL_IP = IP_D
 		LOCAL_MAC = MAC_D
 
-		# Binds local socket to port to make sure that (this) is listening for traffic.
-		client_to_Node = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		print 'Client to ' + LOCAL_NODE + ' Socket created.'
+	# Binds local socket to port to make sure that (this) is listening for traffic.
+	client_to_Node = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	print 'Client to ' + LOCAL_NODE + ' Socket created.'
 
-		#To avoid port reuse problem, the function below is used
-		client_to_Node.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	#To avoid port reuse problem, the function below is used
+	client_to_Node.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-		try:
-			client_to_Node.bind((HOST, LOCAL_PORT))
-		except socket.error , msg:
-			print 'Node ' + LOCAL_NODE + ' Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
-			sys.exit()
+	try:
+		client_to_Node.bind((HOST, LOCAL_PORT))
+	except socket.error , msg:
+		print 'Node ' + LOCAL_NODE + ' Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
+		sys.exit()
 
-		print 'Node '+ LOCAL_NODE +' Socket bind complete'
+	print 'Node '+ LOCAL_NODE +' Socket bind complete'
 
-		client_to_Node.listen(10)
-		print 'Node ' + LOCAL_NODE + ' Socket now listening'
+	client_to_Node.listen(10)
+	print 'Node ' + LOCAL_NODE + ' Socket now listening'
 
-		#now keep talking with the client
-		while 1:
-			#wait to accept a connection - blocking call
-			conn, addr = client_to_Node.accept()
-			print 'Connected with ' + addr[0] + ':' + str(addr[1])
+	#now keep talking with the client
+	while 1:
+		#wait to accept a connection - blocking call
+		conn, addr = client_to_Node.accept()
+		print 'Connected with ' + addr[0] + ':' + str(addr[1])
 
-			#start new thread takes 1st argument as a function name to be run, second is the tuple arguments
-			start_new_thread(clientthread, (conn,))
+		#start new thread takes 1st argument as a function name to be run, second is the tuple arguments
+		start_new_thread(clientthread, (conn,))
 
-			client_to_Node.close()
+	client_to_Node.close()
 
 
 if __name__ == '__main__':
-	if len(sys.argv) < 3:
+	if len(sys.argv) < 2:
 		print("python Node.py <A|B|C|D>")
 		quit(1)
-		main(sys.argv[1])
+	main(sys.argv[1])

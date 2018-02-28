@@ -156,6 +156,7 @@ def receiveARPRequest(message):
 				sender_ip = LOCAL_IP
 				target_mac = message[2]
 				target_ip = message[5]
+				
 
 				message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip
 
