@@ -97,39 +97,12 @@ def pingmac(input):
 				# Send client Message to IP
 				break
 
+
 		# Requirement 4
 		if not isInARPTable:
 			print 'IP not in ARPTable. Broadcasting to find it.'
 			# Send broadcast to all ports and check for IP
 			# Set up socket connection with all other ports.
-
-			try:
-				remote_ip = socket.gethostbyname( 'localhost' )
-			except socket.gaierror:
-				# could not resolve
-				print 'Hostname could not be resolved. Exiting'
-				sys.exit()
-
-			# create a sockets
-			port_a_to_port_b = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			print 'Port ' + str(LOCAL_PORT) +' to Port ' + str(PORT_B)  + ' Socket created.'
-			# port_a_to_port_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			# print 'Port A to Port C Socket created.'
-			# port_a_to_port_d = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			# print 'Port A to Port D Socket created.'
-
-			# Set socket options
-			# To avoid port reuse problem, the function below is used
-			port_a_to_port_b.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			# port_a_to_port_c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			# port_a_to_port_d.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-			# Connect to other nodes
-			port_a_to_port_b.connect((remote_ip, PORT_B))
-			# port_a_to_port_c.connect((remote_ip, PORT_C))
-			# port_a_to_port_d.connect((remote_ip, PORT_D))
-
-			# Setup Listener
 
 			# Setup message
 			protocal = "ARP"
@@ -144,22 +117,48 @@ def pingmac(input):
 			source_port = LOCAL_PORT
 
 			message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip + " " + source_node + " " + str(source_port) + " end"
+			#print(message)
 
-			print 'Message being sent to Port B'
-			print(message)
+			try:
+				remote_ip = socket.gethostbyname( 'localhost' )
+			except socket.gaierror:
+				# could not resolve
+				print 'Hostname could not be resolved. Exiting'
+				sys.exit()
 
-			# Send ip to all sockets
-			port_a_to_port_b.send(message)
-			# port_a_to_port_c.send(message)
-			# port_a_to_port_d.send(message)
+			portList = [8000, 8001, 8002, 8003]
+			for port in portList:
+
+				if port == LOCAL_PORT:
+					continue
+
+				# create a sockets
+				port_x_to_port_y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				print 'Port ' + str(LOCAL_PORT) +' to Port ' + str(port)  + ' Socket created.'
+
+				# Set socket options
+				# To avoid port reuse problem, the function below is used
+				port_x_to_port_y.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+
+				# Connect to other nodes
+				port_x_to_port_y.connect((remote_ip, port))
+
+				# Send ip to all sockets
+				port_x_to_port_y.send(message)
+				print 'Message sent to Port '
+
+				port_x_to_port_y.close
+
+
 	else:
 		print 'invalid input'
 
 # Requirement 5
 def receiveARPRequest(incoming_message):
 	global ARPTable
-	print 'Incoming message: '
-	print(incoming_message)
+	# print 'Incoming message: '
+	# print(incoming_message)
 	if incoming_message[7] == LOCAL_IP:
 		print 'Received ARP from ' + incoming_message[5] + '...replying'
 
