@@ -84,25 +84,25 @@ def pingmac(input):
 			# create a sockets
 			port_a_to_port_b = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			print 'Port A to Port B Socket created.'
-			port_a_to_port_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			print 'Port A to Port C Socket created.'
-			port_a_to_port_d = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			print 'Port A to Port D Socket created.'
+			# port_a_to_port_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			# print 'Port A to Port C Socket created.'
+			# port_a_to_port_d = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			# print 'Port A to Port D Socket created.'
+
+			# Set socket options
+			# To avoid port reuse problem, the function below is used
+			port_a_to_port_b.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			# port_a_to_port_c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			# port_a_to_port_d.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 			# Connect to other nodes
 			port_a_to_port_b.connect((remote_ip, PORT_B))
-			port_a_to_port_c.connect((remote_ip, PORT_C))
-			port_a_to_port_d.connect((remote_ip, PORT_D))
-
-
-			#To avoid port reuse problem, the function below is used
-			port_a_to_port_b.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			port_a_to_port_c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			port_a_to_port_d.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			# port_a_to_port_c.connect((remote_ip, PORT_C))
+			# port_a_to_port_d.connect((remote_ip, PORT_D))
 
 			# Setup message
 			protocal = "ARP"
-			opcode = 1
+			opcode = "1"
 			source = LOCAL_MAC
 			destination = "FF:FF:FF:FF:FF:FF"
 			sender_mac = LOCAL_MAC
@@ -114,51 +114,51 @@ def pingmac(input):
 
 			# Send ip to all sockets
 			port_a_to_port_b.send(message)
-			port_a_to_port_c.send(message)
-			port_a_to_port_d.send(message)
+			# port_a_to_port_c.send(message)
+			# port_a_to_port_d.send(message)
 
 # Requirement 5
-def receiveARPRequest(message):
+def receiveARPRequest(incoming_message):
 
-	if message[7] == LOCAL_IP:
-		print 'Received ARP from ' + message[5] + '...replying'
+	if incoming_message[7][0:10] == LOCAL_IP:
+		print 'Received ARP from ' + incoming_message[5] + '...replying'
 
-		if message[1] == 1:
+		if incoming_message[1] == "1":
 			print 'opcode 1 - message recieved'
+
+			isInARPTable = False
 
 			# Begin by checking local arp table
 			for rowEntry in ARPTable:
-				if rowEntry[1] == message[2]:
+				if rowEntry[1] == incoming_message[2]:
 					# Set value to true if found in ARP Table
-					isInARPTable = true
+					isInARPTable = True
 					print 'IP exists in ARPTable. Sending Response.'
-
-
 					break
 
 			if not isInARPTable:
 				print 'IP not in ARPTable. Adding to ARPTable.'
-				ARPTable.append([message[2],message[4],'Port'])
+				ARPTable.append([incoming_message[2], incoming_message[4],'Port'])
 
 			print 'Sending Response'
 
 
 		# Requirement 7
-		if message[1] == 2:
+		if incoming_message[1] == "2":
 			print 'opcode 2 - reply recieved'
 
 			print 'Adding message to ARPTable'
 
 			# Add message to ARPTable
-			ARPTable.append(['Node',message[2], message[4],'Port '])
+			ARPTable.append(['Node', incoming_message[2], incoming_message[4],'Port '])
 
-			pingmac(message[2])
+			print 'Message added to ARPTable'
+			print 'Current ARP Table'
+			printArpTable()
+			pingmac(incoming_message[2])
 	# Requirement 6
 	else:
-		print 'Received ARP from ' + message[5] + '...ignoring'
-
-
-
+		print 'Received ARP from ' + incoming_message[5] + '...ignoring'
 
 #Function for handling connections. This will be used to create threads
 def clientthread(conn):
@@ -176,6 +176,9 @@ def clientthread(conn):
 		# Use split to parse data. First parameter is delimeter. Second parameter is number of cuts.
 		user_input = data.split(" ")
 
+		# Quit flag
+		quit_string = '!q'
+
 		# Print ARPTable flag
 		ARP = 'arp'
 		PRINT_ARP_TABLE = '-a'
@@ -190,6 +193,7 @@ def clientthread(conn):
 			# TODO HERE
 
 		if user_input[0] == ARP and user_input[1] == PRINT_ARP_TABLE:
+			print 'Printing ARP Table'
 			printArpTable();
 
 		#Adding pingmac flag
@@ -204,8 +208,7 @@ def clientthread(conn):
 			break
 
 	#came out of loop
-	conn.close()
-
+	# conn.close()
 
 #now keep talking with the client
 while 1:
@@ -216,4 +219,4 @@ while 1:
 	#start new thread takes 1st argument as a function name to be run, second is the tuple arguments
 	start_new_thread(clientthread, (conn,))
 
-s.close()
+# client_to_Node_A.close()

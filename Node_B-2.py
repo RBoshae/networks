@@ -1,6 +1,5 @@
 import socket
 import sys
-import time
 from thread import *
 
 # Other ports
@@ -126,7 +125,6 @@ def receiveARPRequest(message):
 
 	# had to parse word to remove line.
 	if message[7][0:10] == LOCAL_IP:
-
 		print 'Received ARP from ' + message[5] + '...replying'
 
 		if message[1] == "1":
@@ -147,50 +145,26 @@ def receiveARPRequest(message):
 				ARPTable.append([message[2],message[5],'Port'])
 
 
-				# Setup message
-				protocal = "ARP"
-				opcode = "2"
-				source = LOCAL_MAC
-				destination = message[2]
-				sender_mac = LOCAL_MAC
-				sender_ip = LOCAL_IP
-				target_mac = message[2]
-				target_ip = message[5]
+			# Setup message
+			protocal = "ARP"
+			opcode = "2"
+			source = LOCAL_MAC
+			destination = message[2]
+			sender_mac = LOCAL_MAC
+			sender_ip = LOCAL_IP
+			target_mac = message[2]
+			target_ip = message[5]
 
-				message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip
+			message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip
 
-				print 'Sending Response'
-				# conn.send(message)
+			print 'Sending Response'
 
-				try:
-					remote_ip = socket.gethostbyname( 'localhost' )
-				except socket.gaierror:
-					# could not resolve
-					print 'Hostname could not be resolved. Exiting'
-					sys.exit()
-
-				# create a sockets
-				port_b_to_port_a = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				print 'Port B to Port A Socket created.'
-				# port_b_to_port_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				# print 'Port B to Port C Socket created.'
-				# port_b_to_port_d = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				# print 'Port B to Port D Socket created.'
-
-				# Connect to other nodes
-				port_b_to_port_a.connect((remote_ip, PORT_A))
-				# port_b_to_port_c.connect((remote_ip, PORT_C))
-				# port_b_to_port_d.connect((remote_ip, PORT_D))
+			conn.send(message)
 
 
-				#To avoid port reuse problem, the function below is used
-				port_b_to_port_a.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-				# port_b_to_port_c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-				# port_b_to_port_d.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-				port_b_to_port_a.send(message)
 		# Requirement 7
-		if message[1] == "2":
+		if message[1] == 2:
 			print 'opcode 2 - reply recieved'
 
 			print 'Adding message to ARPTable'
@@ -235,9 +209,62 @@ def clientthread(conn):
 		ARP_REQUEST_OPCODE_ONE = "1"
 
 		if user_input[0] == ARP_REQUEST:
+			message = user_input
 			# Reply to ARP_REQUEST
-			receiveARPRequest(user_input)
-			# TODO HERE
+			# had to parse word to remove line.
+			if message[7][0:10] == LOCAL_IP:
+				print 'Received ARP from ' + message[5] + '...replying'
+
+				if message[1] == "1":
+					print 'opcode 1 - message recieved'
+					isInARPTable = False
+					# Begin by checking local arp table
+					for rowEntry in ARPTable:
+						if rowEntry[1] == message[2]:
+							# Set value to true if found in ARP Table
+							isInARPTable = True
+							print 'IP exists in ARPTable. Sending Response.'
+
+
+							break
+
+					if not isInARPTable:
+						print 'IP not in ARPTable. Adding to ARPTable.'
+						ARPTable.append([message[2],message[5],'Port'])
+
+
+					# Setup message
+					protocal = "ARP"
+					opcode = "2"
+					source = LOCAL_MAC
+					destination = message[2]
+					sender_mac = LOCAL_MAC
+					sender_ip = LOCAL_IP
+					target_mac = message[2]
+					target_ip = message[5]
+
+					message = protocal + " " + opcode + " " + source + " " + destination + " " + sender_mac + " " + sender_ip + " " + target_mac + " " + target_ip
+
+					print 'Sending Response'
+
+					conn.send(message)
+
+
+
+				# Requirement 7
+				if message[1] == 2:
+					print 'opcode 2 - reply recieved'
+
+					print 'Adding message to ARPTable'
+
+					# Add message to ARPTable
+					ARPTable.append(['Node',message[2], message[4],'Port '])
+
+					pingmac(message[2])
+			# Requirement 6
+			else:
+				print 'Received ARP from ' + message[5] + '...ignoring'
+				print 'Intended target: ' + message[7]
 
 		if user_input[0] == ARP and user_input[1] == PRINT_ARP_TABLE:
 			printArpTable();
@@ -254,7 +281,7 @@ def clientthread(conn):
 			break
 
 	#came out of loop
-	conn.close()
+	#conn.close()
 
 
 #now keep talking with the client
@@ -265,8 +292,7 @@ while 1:
 
 	replyList.append(conn)
 
-	time.sleep(0.1)
 	#start new thread takes 1st argument as a function name to be run, second is the tuple arguments
 	start_new_thread(clientthread, (conn,))
 
-client_to_Node_B.close()
+# client_to_Node_B.close()
