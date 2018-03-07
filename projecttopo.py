@@ -20,4 +20,4 @@ class ProjectTopo( Topo ):
 		self.addLink( h3, centralSwitch )
 		self.addLink( h4, centralSwitch )
 
-topos = { 'projecttopo' : ( lambda: PorjectTopo() ) }
+topos = { 'projecttopo' : ( lambda: ProjectTopo() ) }
