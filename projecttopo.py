@@ -7,17 +7,17 @@ class ProjectTopo( Topo ):
 		# Intitialize topology
 		Topo.__init__( self )
 		# Add hosts and switches
-		h1 = self.addHost( 'h1' )
-		h2 = self.addHost( 'h2' )
-		h3 = self.addHost( 'h3' )
-		h4 = self.addHost( 'h4' )
+		b1 = self.addHost( 'b1' )
+		b2 = self.addHost( 'b2' )
+		b3 = self.addHost( 'b3' )
+		b4 = self.addHost( 'b4' )
 		centralSwitch = self.addSwitch( 's1' )
 
 		# Add links
 		# Order of parameters does not matter.
-		self.addLink( h1, centralSwitch )
-		self.addLink( h2, centralSwitch )
-		self.addLink( h3, centralSwitch )
-		self.addLink( h4, centralSwitch )
+		self.addLink( b1, centralSwitch )
+		self.addLink( b2, centralSwitch )
+		self.addLink( b3, centralSwitch )
+		self.addLink( b4, centralSwitch )
 
 topos = { 'projecttopo' : ( lambda: ProjectTopo() ) }

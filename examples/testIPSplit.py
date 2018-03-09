@@ -2,7 +2,7 @@ import commands         # Used to get Local IP and MAC informtation
 
 ips = commands.getoutput("/sbin/ifconfig | grep -i \"inet\" | awk '{print $2}'")
 ips = ips.split("\n")
-LOCAL_IP = ips[0][4:]
+LOCAL_IP = ips[0][5:]
 print LOCAL_IP
 
 
