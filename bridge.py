@@ -17,18 +17,12 @@ LOCAL_BRIDGE_IP = ips[0][5:]
 macs = commands.getoutput("/sbin/ifconfig | grep -i \"HWaddr\" | awk '{print $5}'")
 macs = macs.split("\n")
 LOCAL_BRIDGE_MAC = macs[0]
-
-# LOCAL info
-BRIDGE_NAME = ''
-LOCAL_BRIDGE_IP = ''
-LOCAL_BRIDGE_MAC = ''
-BRIDGE_ID = LOCAL_BRIDGE_MAC
+print 'global ' + LOCAL_BRIDGE_MAC
 
 # Ports
 PORT_ONE = 8001
 PORT_TWO = 8002
 PORT_THREE = 8003
-
 
 HOST = ''        # Symbolic name meaning all available interfaces
 
@@ -37,7 +31,6 @@ BRIDGE_ONE   = "B1"
 BRIDGE_TWO   = "B2"
 BRIDGE_THREE = "B3"
 BRIDGE_FOUR  = "B4"
-
 
 # BRIDGE IPs
 BRIDGE_ONE_IP   = "10.0.0.1"
@@ -48,16 +41,17 @@ BRIDGE_FOUR_IP  = "10.0.0.4"
  # PORT Mapping
 BRIDGE_ONE_PORT_MAPPING   = {(BRIDGE_TWO_IP, PORT_THREE), (BRIDGE_THREE_IP, PORT_ONE), (BRIDGE_FOUR_IP ,PORT_TWO)}
 BRIDGE_TWO_PORT_MAPPING   = {(BRIDGE_ONE_IP, PORT_THREE), (BRIDGE_THREE_IP,PORT_TWO), (BRIDGE_FOUR_IP, PORT_ONE)}
-BRIDGE_THREE_PORT_MAPPING = {(BRIDGE_ONE_IP, PORT_TWO), (BRIDGE_TWO_IP,PORT_ONE), (BRIDGE_THREE_IP, PORT_THREE)}
+BRIDGE_THREE_PORT_MAPPING = {(BRIDGE_ONE_IP, PORT_ONE), (BRIDGE_FOUR_IP,PORT_TWO), (BRIDGE_FOUR_IP, PORT_THREE)}
+BRIDGE_FOUR_PORT_MAPPING = {(BRIDGE_ONE_IP, PORT_TWO), (BRIDGE_TWO_IP,PORT_ONE), (BRIDGE_THREE_IP, PORT_THREE)}
 
 # Set BRIDGE_PORT_MAPPING_LOCAL to designated mapping
 if LOCAL_BRIDGE_IP == BRIDGE_ONE_IP:
 	BRIDGE_PORT_MAPPING_LOCAL = BRIDGE_ONE_PORT_MAPPING
-elif: LOCAL_BRIDGE_IP == BRIDGE_TWO_IP:
+elif LOCAL_BRIDGE_IP == BRIDGE_TWO_IP:
 	BRIDGE_PORT_MAPPING_LOCAL = BRIDGE_TWO_PORT_MAPPING
-elif: LOCAL_BRIDGE_IP == BRIDGE_THREE_IP:
+elif LOCAL_BRIDGE_IP == BRIDGE_THREE_IP:
 	BRIDGE_PORT_MAPPING_LOCAL = BRIDGE_THREE_PORT_MAPPING
-elif: LOCAL_BRIDGE_IP == BRIDGE_FOUR_IP:
+elif LOCAL_BRIDGE_IP == BRIDGE_FOUR_IP:
 	BRIDGE_PORT_MAPPING_LOCAL = BRIDGE_FOUR_PORT_MAPPING
 else:
 	print 'Count not assign port mapping. Line 54'
@@ -71,9 +65,14 @@ else:
 # an empty internal table with columns for MAC, Port Number and status.
 Bridge_Table = []
 
-
+# LOCAL info
+BRIDGE_NAME = ''
+LOCAL_BRIDGE_IP = ''
+BRIDGE_ID = LOCAL_BRIDGE_MAC
 # Root Bridge - Default value of bridge
 root_bridge = True
+DISTANCE_FROM_ROOT = 0
+ROOT_BRIDGE_ID = BRIDGE_ID
 
 # Used to track time for send_bpdu
 five_seconds_passed = True
@@ -84,119 +83,104 @@ def printBridgeTable():
 
 # Help method called by setup_bridge.
 def send_bpdu():
-	global five_seconds_passed
 	global Bridge_Table
-	global BRIDGE_ONE_IP
-	global BRIDGE_ONE_PORT_MAPPING
-	global BRIDGE_TWO_PORT_MAPPING
-	global BRIDGE_THREE_PORT_MAPPING
-	global root_bridge
+	global ROOT_BRIDGE_ID
+	global DISTANCE_FROM_ROOT
+	global BRIDGE_ID
 	print 'Broadcasting BPDU'
-	five_seconds_passed = True
 
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 	# Define what will be sent in the BPDU. Store the value in message.
-	Y =				# Y is the bridge ID of the node that the sending bridge thinks is the root,
-	d = DISTANCE	# d is the cost to reach Y
-	X =				# X is the bridge ID of the bridge sending the message.
-	bpdu_message =
+	Y =	ROOT_BRIDGE_ID	 # Y is the bridge ID of the node that the sending bridge thinks is the root,
+	d = DISTANCE_FROM_ROOT + 1 	 # d is the cost to reach Y
+	X =	BRIDGE_ID	 	 # X is the bridge ID of the bridge sending the message.
+	bpdu_message = str(Y) + ' ' + str(d) + ' ' + str(X)
 
-	if LOCAL_BRIDGE_IP == BRIDGE_ONE_IP:
-		for rowEntry in Bridge_Table:
-			if rowEntry[2] == "DP":
-				if rowEntry == 1:
-					s.sendto("msg", (BRIDGE_ONE_PORT_MAPPING[0][0], BRIDGE_ONE_PORT_MAPPING[0][1]) )
-				elif rowEntry == 2:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_ONE_PORT_MAPPING[1][0], BRIDGE_ONE_PORT_MAPPING[1][1]) )
-				elif rowEntry == 3:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_ONE_PORT_MAPPING[2][0], BRIDGE_ONE_PORT_MAPPING[2][1]) )
-				else:
-					root_bridge = False
-					print "Settled"
+	for rowEntry in Bridge_Table:
+		if rowEntry[2] == "DP":
+			if rowEntry == 1:
+				s.sendto(bpdu_message + ' ' + BRIDGE_PORT_MAPPING_LOCAL[0][1] , (BRIDGE_PORT_MAPPING_LOCAL[0][0], BRIDGE_PORT_MAPPING_LOCAL[0][1]) )
+			elif rowEntry == 2:
+				s.sendto(bpdu_message + ' ' + BRIDGE_PORT_MAPPING_LOCAL[1][1], (BRIDGE_PORT_MAPPING_LOCAL[1][0], BRIDGE_PORT_MAPPING_LOCAL[1][1]) )
+			elif rowEntry == 3:
+				s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				s.sendto(bpdu_message + ' ' + BRIDGE_PORT_MAPPING_LOCAL[1][2], (BRIDGE_PORT_MAPPING_LOCAL[2][0], BRIDGE_PORT_MAPPING_LOCAL[2][1]) )
+			else:
+				root_bridge = False
+				print "Settled"
+				printBridgeTable()
 
-	if LOCAL_BRIDGE_IP == BRIDGE_TWO_IP:
-		for rowEntry in Bridge_Table:
-			if rowEntry[2] == "DP":
-				if rowEntry == 1:
-					s.sendto("msg", (BRIDGE_TWO_PORT_MAPPING[0][0], BRIDGE_TWO_PORT_MAPPING[0][1]) )
-				elif rowEntry == 2:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_TWO_PORT_MAPPING[1][0], BRIDGE_TWO_PORT_MAPPING[1][1]) )
-				elif rowEntry == 3:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_TWO_PORT_MAPPING[2][0], BRIDGE_TWO_PORT_MAPPING[2][1]) )
-				else:
-					root_bridge = False
-					print "Settled"
+	if (ROOT_BRIDGE_ID == BRIDGE_ID):
+		threading.Timer(5.0,send_bpdu).start()
 
-	if LOCAL_BRIDGE_IP == BRIDGE_THREE_IP:
-		for rowEntry in Bridge_Table:
-			if rowEntry[2] == "DP":
-				if rowEntry == 1:
-					s.sendto("msg", (BRIDGE_THREE_PORT_MAPPING[0][0], BRIDGE_THREE_PORT_MAPPING[0][1]) )
-				elif rowEntry == 2:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_THREE_PORT_MAPPING[1][0], BRIDGE_THREE_PORT_MAPPING[1][1]) )
-				elif rowEntry == 3:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_THREE_PORT_MAPPING[2][0], BRIDGE_THREE_PORT_MAPPING[2][1]) )
-				else:
-					root_bridge = False
-					print "Settled"
+def isRootBridge(other_bridge_id, local_bridge):
+	obi = other_bridge_id.splt(":")
+	lb = local_bridge.splt(":")
 
-	if LOCAL_BRIDGE_IP == BRIDGE_FOUR_IP:
-		for rowEntry in Bridge_Table:
-			if rowEntry[2] == "DP":
-				if rowEntry == 1:
-					s.sendto("msg", (BRIDGE_FOUR_PORT_MAPPING[0][0], BRIDGE_FOUR_PORT_MAPPING[0][1]) )
-				elif rowEntry == 2:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_FOUR_PORT_MAPPING[1][0], BRIDGE_FOUR_PORT_MAPPING[1][1]) )
-				elif rowEntry == 3:
-					s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					s.sendto("msg", (BRIDGE_FOUR_PORT_MAPPING[2][0], BRIDGE_FOUR_PORT_MAPPING[2][1]) )
-				else:
-					root_bridge = False
-					print "Settled"
+	if obi[0] < lb[0]:
+		return True
+	elif obi[1] < lb[1]:
+		return True
+	elif obi[2] < lb[2]:
+		return True
+	elif obi[3] < lb[3]:
+		return True
+	elif obi[4] < lb[4]:
+		return True
+	elif obi[5] < lb[5]:
+		return True
+	else:
+		return False
 
 #Function for handling connections. This will be used to create threads
 def clientthread(conn):
 	global Bridge_Table
-	print 'received BPDU from '
+	global ROOT_BRIDGE_ID
+	global DISTANCE_FROM_ROOT
+	global BRIDGE_ID
+	print 'received BPDU from ' + addr[0]
 
-	for rowEntry in Bridge_Table:
-		Bridge_Table[1] = "BP"
 	#inifinte loop so that function do not terminate and thread do not end
 	while True:
 
 		#Receiving from client
 		data = conn.recv(1024)
 
-		reply = 'OK...' + data
-
 		# Use split to parse data. First parameter is delimeter. Second parameter is number of cuts.
-		user_input = data.split(" ", 3)
+		user_input = data.split(":")
 
-		# Various flags
-		quit_string = '!q'
-		forward_string = '!fw'
-		forward_report_string = data[0:7]
+		Y = user_input[0]
+		d = user_input[1]
+		X = user_input[2]
+		port = int(user_input[3])
 
-		# Print ARPTable flag
-		ARP = 'arp'
-		PRINT_ARP_TABLE = '-a'
+		if Y != ROOT_BRIDGE_ID:
+			if isRootBridge(Y, ROOT_BRIDGE_ID):
+				ROOT_BRIDGE_ID = Y
+				# Change Bridge Table
+				for rowEntry in Bridge_Table:
+					if Bridge_Table[1] == port:
+						Bridge_Table[2] = "RP"
+			else:
+				# Change Bridge Table
+				for rowEntry in Bridge_Table:
+					if Bridge_Table[1] == port:
+						Bridge_Table[2] = "BP"
 
-		if (user_input[0] == ARP) and (user_input[1] == PRINT_ARP_TABLE):
-			printArpTable();
+		else:
+			if d < DISTANCE_FROM_ROOT:
+				ROOT_BRIDGE_ID = Y
+				# Change Bridge Table
+				for rowEntry in Bridge_Table:
+					if Bridge_Table[1] == port:
+						Bridge_Table[2] = "RP"
+			else:
+				# Change Bridge Table
+				for rowEntry in Bridge_Table:
+					if Bridge_Table[1] == port:
+						Bridge_Table[2] = "BP"
 
-		#Adding pingmac
-		USER_INPUT_PINGMAC = 'pingmac'
-
-		if user_input[0] == USER_INPUT_PINGMAC:
-			pingmac(user_input)
 
 		if user_input[0] == quit_string:
 			break
@@ -290,6 +274,8 @@ def setup_bridge(Bridge_IP):
 	global LOCAL_BRIDGE_IP
 	global LOCAL_BRIDGE_MAC
 
+	print 'Local' + LOCAL_BRIDGE_MAC # Debugging
+
 	# Ports
 	global PORT_ONE
 	global PORT_TWO
@@ -354,11 +340,7 @@ def setup_bridge(Bridge_IP):
 	time.sleep(10)
 
 	#now keep talking with the client
-	while 1:
-
-		if(root_bridge and five_seconds_passed):
-			five_seconds_passed = False
-			threading.Timer(5.0,send_bpdu).start()
+	threading.Timer(5.0,send_bpdu).start()
 
 
 
