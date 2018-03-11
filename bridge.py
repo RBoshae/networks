@@ -26,6 +26,7 @@ PORT_TWO = 8002
 PORT_THREE = 8003
 
 HOST = ''        # Symbolic name meaning all available interfaces
+LOCAL_HOST = LOCAL_BRIDGE_IP
 
 # BRIDGES
 BRIDGE_ONE   = "B1"
@@ -48,6 +49,8 @@ BRIDGE_ONE_PORT_MAPPING   = [[BRIDGE_TWO_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT
 BRIDGE_TWO_PORT_MAPPING   = [[BRIDGE_ONE_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_ONE]]
 BRIDGE_THREE_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_ONE], [BRIDGE_FOUR_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_THREE]]
 BRIDGE_FOUR_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_TWO], [BRIDGE_TWO_IP, PORT_ONE], [BRIDGE_THREE_IP, PORT_THREE]]
+
+BRIDGE_PORT_MAPPING_LOCAL = []
 
 # Set BRIDGE_PORT_MAPPING_LOCAL to designated mapping
 if LOCAL_BRIDGE_IP == BRIDGE_ONE_IP:
@@ -112,7 +115,9 @@ def send_bpdu():
 	printBridgeTable()
 
 	# Outgoing socket
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	print 'Outgoing Socket Created' ## Debugging
 
 	# Define what will be sent in the BPDU. Store the value in message.
@@ -125,39 +130,66 @@ def send_bpdu():
 		if rowEntry[2] == "DP":
 			if rowEntry == Bridge_Table[0]:
 				print 'bpdu data'
-				print 'msg ' + bpdu_message
-				print 'Sending Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
-				print 'IP: ' + BRIDGE_PORT_MAPPING_LOCAL[0][0]
-				print 'Root Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
+				# print 'msg ' + bpdu_message
+				# print 'Sending Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
+				# print 'IP: ' + BRIDGE_PORT_MAPPING_LOCAL[0][0]
+				# print 'Root Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
+
+				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
 
 				# Reminder BRIDGE_ONE_PORT_MAPPING   = {(BRIDGE_TWO_IP, PORT_THREE), (BRIDGE_THREE_IP, PORT_ONE), (BRIDGE_FOUR_IP ,PORT_TWO)}
-				s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1]) , ( BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1]) ) )  #(msg, ip, port)
+				s1.connect((BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1])))
+				s1.send(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1]))  #(msg, ip, port)
+				print 'message sent'
 			elif rowEntry == Bridge_Table[1]:
-				s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1]), (BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))
+				s2.connect((BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))
+				s2.send(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1]))
 			elif rowEntry == Bridge_Table[2]:
-				s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-				s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1]), (BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))
+				s3.connect((BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))
+				s3.send(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1]))
 			else:
 				'No DP\'s'
-	s.close() # close socket
+			# if rowEntry == Bridge_Table[0]:
+			# 	print 'bpdu data'
+			# 	print 'msg ' + bpdu_message
+			# 	print 'Sending Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
+			# 	print 'IP: ' + BRIDGE_PORT_MAPPING_LOCAL[0][0]
+			# 	print 'Root Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
+            #
+			# 	# Reminder BRIDGE_ONE_PORT_MAPPING   = {(BRIDGE_TWO_IP, PORT_THREE), (BRIDGE_THREE_IP, PORT_ONE), (BRIDGE_FOUR_IP ,PORT_TWO)}
+			# 	s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1]) , ( BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1]) ) )  #(msg, ip, port)
+			# elif rowEntry == Bridge_Table[1]:
+			# 	s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1]), (BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))
+			# elif rowEntry == Bridge_Table[2]:
+			# 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			# 	s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1]), (BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))
+			# else:
+			# 	'No DP\'s'
+
+
+
+
+	s1.close() # close socket
+	s2.close()
+	s3.close()
 	if (ROOT_BRIDGE_ID == BRIDGE_ID):
 		threading.Timer(5.0,send_bpdu).start()
 
 def isRootBridge(other_bridge_id, local_bridge):
-	obi = other_bridge_id.splt(":")
-	lb = local_bridge.splt(":")
+	obi = other_bridge_id.split(":")
+	lb = local_bridge.split(":")
 
-	if obi[0] < lb[0]:
+	if int(obi[0], 16) < int(lb[0],16):
 		return True
-	elif obi[1] < lb[1]:
+	elif int(obi[1],16) < int(lb[1], 16):
 		return True
-	elif obi[2] < lb[2]:
+	elif int(obi[2], 16) < int(lb[2], 16):
 		return True
-	elif obi[3] < lb[3]:
+	elif int(obi[3], 16) < int(lb[3], 16):
 		return True
-	elif obi[4] < lb[4]:
+	elif int(obi[4], 16) < int(lb[4], 16):
 		return True
-	elif obi[5] < lb[5]:
+	elif int(obi[5], 16) < int(lb[5], 16):
 		return True
 	else:
 		return False
@@ -168,23 +200,28 @@ def clientthread(conn):
 	global ROOT_BRIDGE_ID
 	global DISTANCE_FROM_ROOT
 	global BRIDGE_ID
-	print 'received BPDU from ' + addr[0]
+	#print 'received BPDU from ' + addr[0]
 
 	#inifinte loop so that function do not terminate and thread do not end
 	while True:
 
+
 		#Receiving from client
 		data = conn.recv(1024)
 
-		# Use split to parse data. First parameter is delimeter. Second parameter is number of cuts.
-		user_input = data.split(":")
 
-		Y = user_input[0]
-		d = user_input[1]
+		# Use split to parse data. First parameter is delimeter. Second parameter is number of cuts.
+		user_input = data.split(" ")
+
+		Y = user_input[0]       #root
+		d = int(user_input[1])
 		X = user_input[2]
 		port = int(user_input[3])
+		print 'port' + str(port)
 
 		if Y != ROOT_BRIDGE_ID:
+			print 'checking root bridge'
+			print 'if isRootBridge(Y, ROOT_BRIDGE_ID):  ## ' + Y + ' ' + ROOT_BRIDGE_ID
 			if isRootBridge(Y, ROOT_BRIDGE_ID):
 				ROOT_BRIDGE_ID = Y
 				DISTANCE_FROM_ROOT = d + 1
@@ -192,6 +229,8 @@ def clientthread(conn):
 				for rowEntry in Bridge_Table:
 					if Bridge_Table[1] == port:
 						Bridge_Table[2] = "RP"
+						print 'Root Bridge assigned'
+						printBridgeTable()
 			else:
 				# Change Bridge Table
 				for rowEntry in Bridge_Table:
@@ -217,10 +256,11 @@ def clientthread(conn):
 	conn.close()
 
 def accept_connections_on_port_one(Port1_to_Bridge):
+	print 'Port 1 waiting for connection'
 	while 1:
 		#wait to accept a connection - blocking call
-		conn1, addr1 = Port1_to_Bridge.accept()
-		print 'Connected with ' + addr1[0] + ':' + str(addr1[1])
+		conn1, addr1 = Port1_to_Bridge.accept()  #debugging
+		print 'CONNECTION! with ' + addr1[0] + ':' + str(addr1[1])
 
 		#start new thread takes 1st argument as a function name to be run, second is the tuple arguments
 		start_new_thread(clientthread, (conn1,))
@@ -250,7 +290,7 @@ def accept_connections_on_port_three(Port3_to_Bridge):
 
 def setup_bridge(Bridge_IP):
 	global LOCAL_PORT       # Arbitrary non-privileged port
-	global LOCAL_NODE
+	global LOCAL_HOST
 	global LOCAL_BRIDGE_IP
 	global LOCAL_BRIDGE_MAC
 
@@ -285,24 +325,25 @@ def setup_bridge(Bridge_IP):
 
 	# Binds local socket to port to make sure that (this) is listening for traffic.
 	try:
-		Port1_to_Bridge.bind((HOST, PORT_ONE))
-		Port2_to_Bridge.bind((HOST, PORT_TWO))
-		Port3_to_Bridge.bind((HOST, PORT_THREE))
+		Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE))
+		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE)) # ' + LOCAL_HOST + ', ' + str(PORT_ONE) # debugging
+		Port2_to_Bridge.bind((LOCAL_HOST, PORT_TWO))
+		Port3_to_Bridge.bind((LOCAL_HOST, PORT_THREE))
 	except socket.error , msg:
 		print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
 		sys.exit()
 
-	print 'Bridge to Ports Socket bind complete'
 
-	Port1_to_Bridge.listen(10)
+	Port1_to_Bridge.listen(1)
 	print 'Port1 to Bridge Socket now listening'
 
-	Port2_to_Bridge.listen(10)
+	Port2_to_Bridge.listen(1)
 	print 'Port2 to Bridge Socket now listening'
 
-	Port3_to_Bridge.listen(10)
+	Port3_to_Bridge.listen(1)
 	print 'Port3 to Bridge Socket now listening'
 
+	print 'thread'
 	start_new_thread(accept_connections_on_port_one, (Port1_to_Bridge,))
 	start_new_thread(accept_connections_on_port_two, (Port2_to_Bridge,))
 	start_new_thread(accept_connections_on_port_three, (Port3_to_Bridge,))
