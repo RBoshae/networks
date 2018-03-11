@@ -62,7 +62,7 @@ elif LOCAL_BRIDGE_IP == BRIDGE_THREE_IP:
 elif LOCAL_BRIDGE_IP == BRIDGE_FOUR_IP:
 	BRIDGE_PORT_MAPPING_LOCAL = BRIDGE_FOUR_PORT_MAPPING
 else:
-	print 'Count not assign port mapping. Line 54'
+	print 'Count not assign port mapping. Check Line 55'
 
 # Requirement 3. Each bridge will have a table with the MAC, port
 # number, status where status is either Root Port, Designated Port, of
@@ -98,10 +98,9 @@ def printBridgeTable():
 		print 'Root Node'
 	else:
 		print 'Forwarding Node'
-
-	print(Bridge_Table[0])
-	print(Bridge_Table[1])
-	print(Bridge_Table[2])
+		print(Bridge_Table[0])
+		print(Bridge_Table[1])
+		print(Bridge_Table[2])
 
 # Help method called by setup_bridge.
 def send_bpdu():
@@ -126,20 +125,25 @@ def send_bpdu():
 	X =	BRIDGE_ID	 	 			# X is the bridge ID of the bridge sending the message.
 	bpdu_message = str(Y) + ' ' + str(d) + ' ' + str(X)
 
+	if (not bpdu_message):
+		print 'WARNING SENDING EMPTY BPDU'
+
 	for rowEntry in Bridge_Table:
 		if rowEntry[2] == "DP":
 			if rowEntry == Bridge_Table[0]:
-				print 'bpdu data'
+				# print 'bpdu data'
 				# print 'msg ' + bpdu_message
 				# print 'Sending Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
 				# print 'IP: ' + BRIDGE_PORT_MAPPING_LOCAL[0][0]
 				# print 'Root Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
 
-				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
+				# print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
 
 				# Reminder BRIDGE_ONE_PORT_MAPPING   = {(BRIDGE_TWO_IP, PORT_THREE), (BRIDGE_THREE_IP, PORT_ONE), (BRIDGE_FOUR_IP ,PORT_TWO)}
 				s1.connect((BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1])))
 				s1.send(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1]))  #(msg, ip, port)
+				print 'Outgoing message'
+				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
 				print 'message sent'
 			elif rowEntry == Bridge_Table[1]:
 				s2.connect((BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))
@@ -176,20 +180,32 @@ def send_bpdu():
 		threading.Timer(5.0,send_bpdu).start()
 
 def isRootBridge(other_bridge_id, local_bridge):
-	obi = other_bridge_id.split(":")
-	lb = local_bridge.split(":")
+	print 'in isRootBridge'                     # Debugging
+	print 'other_bridge_id: ' + other_bridge_id # Debugging
+	print 'local_bridge: ' + local_bridge       # Debugging
+	obi = other_bridge_id.split(':',6)
+	print 'obi values ' + str(obi)  # Debugging
+
+	lb = local_bridge.split(':',6)
+	print 'lb values ' + str(lb)	   # Debugging
 
 	if int(obi[0], 16) < int(lb[0],16):
+		print obi[0]
 		return True
 	elif int(obi[1],16) < int(lb[1], 16):
+		print obi[1]
 		return True
 	elif int(obi[2], 16) < int(lb[2], 16):
+		print obi[2]
 		return True
 	elif int(obi[3], 16) < int(lb[3], 16):
+		print obi[3]
 		return True
 	elif int(obi[4], 16) < int(lb[4], 16):
+		print obi[4]
 		return True
 	elif int(obi[5], 16) < int(lb[5], 16):
+		print obi[5]
 		return True
 	else:
 		return False
@@ -200,7 +216,7 @@ def clientthread(conn):
 	global ROOT_BRIDGE_ID
 	global DISTANCE_FROM_ROOT
 	global BRIDGE_ID
-	#print 'received BPDU from ' + addr[0]
+
 
 	#inifinte loop so that function do not terminate and thread do not end
 	while True:
@@ -211,46 +227,57 @@ def clientthread(conn):
 
 
 		# Use split to parse data. First parameter is delimeter. Second parameter is number of cuts.
-		user_input = data.split(" ")
 
-		Y = user_input[0]       #root
-		d = int(user_input[1])
-		X = user_input[2]
-		port = int(user_input[3])
-		print 'port' + str(port)
+		if data:
+			print 'received BPDU, data received: ' + data
+			user_input = data.split(" ")
+			print 'data split ' + str(user_input)
 
-		if Y != ROOT_BRIDGE_ID:
-			print 'checking root bridge'
-			print 'if isRootBridge(Y, ROOT_BRIDGE_ID):  ## ' + Y + ' ' + ROOT_BRIDGE_ID
-			if isRootBridge(Y, ROOT_BRIDGE_ID):
-				ROOT_BRIDGE_ID = Y
-				DISTANCE_FROM_ROOT = d + 1
-				# Change Bridge Table
-				for rowEntry in Bridge_Table:
-					if Bridge_Table[1] == port:
-						Bridge_Table[2] = "RP"
-						print 'Root Bridge assigned'
-						printBridgeTable()
+			Y = str(user_input[0])       #root
+			d = int(user_input[1])
+			X = str(user_input[2])
+			port = int(user_input[3])
+			print 'port ' + str(port)
+
+			if Y != ROOT_BRIDGE_ID:
+				print 'DIFFERENT ROOT BRIDGE'    # Debugging
+				print 'checking root bridge'	 # Debugging
+				print 'if isRootBridge(Y, ROOT_BRIDGE_ID):  ## ' + Y + ' ' + ROOT_BRIDGE_ID
+				if isRootBridge(Y, ROOT_BRIDGE_ID):
+					ROOT_BRIDGE_ID = Y
+					DISTANCE_FROM_ROOT = d + 1
+					# Change Bridge Table
+					for rowEntry in Bridge_Table:
+						if Bridge_Table[1] == port:
+							Bridge_Table[2] = "RP"
+							print 'Root Bridge assigned'
+							# printBridgeTable()
+				else:
+					# Change Bridge Table
+					for rowEntry in Bridge_Table:
+						if Bridge_Table[1] == port:
+							Bridge_Table[2] = "BP"
+				printBridgeTable() # Debugging
+
 			else:
-				# Change Bridge Table
-				for rowEntry in Bridge_Table:
-					if Bridge_Table[1] == port:
-						Bridge_Table[2] = "BP"
+				print 'SAME ROOT BRIDGE'    # Debugging
+				print 'comparing distances'	 # Debugging
+				if d < DISTANCE_FROM_ROOT:
+					print 'Closer'
+					ROOT_BRIDGE_ID = Y
+					# Change Bridge Table
+					for rowEntry in Bridge_Table:
+						if Bridge_Table[1] == port:
+							Bridge_Table[2] = "RP"
+				else:
+					print 'further'
+					# Change Bridge Table
+					for rowEntry in Bridge_Table:
+						if Bridge_Table[1] == port:
+							Bridge_Table[2] = "BP"
 
-		else:
-			if d < DISTANCE_FROM_ROOT:
-				ROOT_BRIDGE_ID = Y
-				# Change Bridge Table
-				for rowEntry in Bridge_Table:
-					if Bridge_Table[1] == port:
-						Bridge_Table[2] = "RP"
-			else:
-				# Change Bridge Table
-				for rowEntry in Bridge_Table:
-					if Bridge_Table[1] == port:
-						Bridge_Table[2] = "BP"
-		if BRIDGE_ID != ROOT_BRIDGE_ID:
-			send_bpdu()
+			# if BRIDGE_ID != ROOT_BRIDGE_ID:
+			# 	send_bpdu()
 
 	#came out of loop
 	conn.close()
@@ -260,7 +287,7 @@ def accept_connections_on_port_one(Port1_to_Bridge):
 	while 1:
 		#wait to accept a connection - blocking call
 		conn1, addr1 = Port1_to_Bridge.accept()  #debugging
-		print 'CONNECTION! with ' + addr1[0] + ':' + str(addr1[1])
+		print 'CONNECTION RECEIVED! from ' + addr1[0] + ':' + str(addr1[1])
 
 		#start new thread takes 1st argument as a function name to be run, second is the tuple arguments
 		start_new_thread(clientthread, (conn1,))
@@ -294,7 +321,7 @@ def setup_bridge(Bridge_IP):
 	global LOCAL_BRIDGE_IP
 	global LOCAL_BRIDGE_MAC
 
-	print 'Local' + LOCAL_BRIDGE_MAC # Debugging
+	print 'Local ' + LOCAL_BRIDGE_MAC # Debugging
 
 	# Ports
 	global PORT_ONE
@@ -326,7 +353,7 @@ def setup_bridge(Bridge_IP):
 	# Binds local socket to port to make sure that (this) is listening for traffic.
 	try:
 		Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE))
-		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE)) # ' + LOCAL_HOST + ', ' + str(PORT_ONE) # debugging
+		#print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE)) # ' + LOCAL_HOST + ', ' + str(PORT_ONE) # debugging
 		Port2_to_Bridge.bind((LOCAL_HOST, PORT_TWO))
 		Port3_to_Bridge.bind((LOCAL_HOST, PORT_THREE))
 	except socket.error , msg:
@@ -334,22 +361,30 @@ def setup_bridge(Bridge_IP):
 		sys.exit()
 
 
-	Port1_to_Bridge.listen(1)
+	Port1_to_Bridge.listen(10)
 	print 'Port1 to Bridge Socket now listening'
 
-	Port2_to_Bridge.listen(1)
+	Port2_to_Bridge.listen(10)
 	print 'Port2 to Bridge Socket now listening'
 
-	Port3_to_Bridge.listen(1)
+	Port3_to_Bridge.listen(10)
 	print 'Port3 to Bridge Socket now listening'
 
-	print 'thread'
 	start_new_thread(accept_connections_on_port_one, (Port1_to_Bridge,))
 	start_new_thread(accept_connections_on_port_two, (Port2_to_Bridge,))
 	start_new_thread(accept_connections_on_port_three, (Port3_to_Bridge,))
 
 	print 'Starting algorithm in 10 seconds'
-	time.sleep(10)
+	time.sleep(5)
+	print 'Starting algorithm in 5 seconds'
+	time.sleep(2)
+	print 'Starting algorithm in 3 seconds'
+	time.sleep(1)
+	print 'Starting algorithm in 2 seconds'
+	time.sleep(1)
+	print 'Starting algorithm in 1 seconds'
+	time.sleep(1)
+	print 'Start!'
 
 	#now keep talking with the client
 	threading.Timer(5.0,send_bpdu).start()
