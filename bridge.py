@@ -35,10 +35,10 @@ BRIDGE_THREE = "B3"
 BRIDGE_FOUR  = "B4"
 
 # BRIDGE IPs
-BRIDGE_ONE_IP   = '10.0.0.1'
-BRIDGE_TWO_IP   = '10.0.0.2'
-BRIDGE_THREE_IP = '10.0.0.3'
-BRIDGE_FOUR_IP  = '10.0.0.4'
+BRIDGE_ONE_IP   = "10.0.0.1"
+BRIDGE_TWO_IP   = "10.0.0.2"
+BRIDGE_THREE_IP = "10.0.0.3"
+BRIDGE_FOUR_IP  = "10.0.0.4"
 
  # PORT Mapping
 BRIDGE_ONE_PORT_MAPPING   = [[BRIDGE_TWO_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_ONE], [BRIDGE_FOUR_IP ,PORT_TWO]]
@@ -532,3 +532,5 @@ if __name__ == '__main__':
 		print("python Bridge.py")
 		quit(1)
 	result = setup_bridge(LOCAL_BRIDGE_IP)
+
+print 'We in outer space now'
