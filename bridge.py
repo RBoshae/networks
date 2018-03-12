@@ -48,16 +48,22 @@ elif LOCAL_BRIDGE_IP == BRIDGE_TWO_IP:
 	LOCAL_BRIDGE_MAC = "01:00:00:00:00:00"
 elif LOCAL_BRIDGE_IP == BRIDGE_THREE_IP:
 	LOCAL_BRIDGE_MAC = "41:00:00:00:00:00"
-elif LOCAL_BRIDGE_IP == BRIDGE_TWO_IP:
+elif LOCAL_BRIDGE_IP == BRIDGE_FOUR_IP:
 	LOCAL_BRIDGE_MAC = "f1:00:00:00:00:00"
 else:
 	print 'Something went wrong with hardcoding mac'
 
+#  # Original PORT Mapping
+# BRIDGE_ONE_PORT_MAPPING   = [[BRIDGE_TWO_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_ONE], [BRIDGE_FOUR_IP ,PORT_TWO]]
+# BRIDGE_TWO_PORT_MAPPING   = [[BRIDGE_ONE_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_ONE]]
+# BRIDGE_THREE_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_ONE], [BRIDGE_TWO_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_THREE]]
+# BRIDGE_FOUR_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_TWO], [BRIDGE_TWO_IP, PORT_ONE], [BRIDGE_THREE_IP, PORT_THREE]]
+
  # PORT Mapping
-BRIDGE_ONE_PORT_MAPPING   = [[BRIDGE_TWO_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_ONE], [BRIDGE_FOUR_IP ,PORT_TWO]]
-BRIDGE_TWO_PORT_MAPPING   = [[BRIDGE_ONE_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_ONE]]
+BRIDGE_ONE_PORT_MAPPING   = [[BRIDGE_THREE_IP, PORT_ONE], [BRIDGE_FOUR_IP ,PORT_TWO], [BRIDGE_TWO_IP, PORT_THREE]]
+BRIDGE_TWO_PORT_MAPPING   = [[BRIDGE_FOUR_IP, PORT_ONE], [BRIDGE_THREE_IP, PORT_TWO], [BRIDGE_ONE_IP, PORT_THREE]]
 BRIDGE_THREE_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_ONE], [BRIDGE_TWO_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_THREE]]
-BRIDGE_FOUR_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_TWO], [BRIDGE_TWO_IP, PORT_ONE], [BRIDGE_THREE_IP, PORT_THREE]]
+BRIDGE_FOUR_PORT_MAPPING = [[BRIDGE_TWO_IP, PORT_ONE], [BRIDGE_ONE_IP, PORT_TWO], [BRIDGE_THREE_IP, PORT_THREE]]
 
 BRIDGE_PORT_MAPPING_LOCAL = []
 
@@ -122,7 +128,7 @@ def sendBPDU(args):
 	global OUTGOING_MESSAGE_NUMBER
 
 	print 'Readying BPDU'
-	# printBridgeTable()
+	printBridgeTable()
 
 	# Outgoing socket
 	s1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -177,26 +183,7 @@ def sendBPDU(args):
 
 			else:
 				print 'No DP\'s'
-			# if rowEntry == Bridge_Table[0]:
-			# 	print 'bpdu data'
-			# 	print 'msg ' + bpdu_message
-			# 	print 'Sending Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
-			# 	print 'IP: ' + BRIDGE_PORT_MAPPING_LOCAL[0][0]
-			# 	print 'Root Port ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
-            #
-			# 	# Reminder BRIDGE_ONE_PORT_MAPPING   = {(BRIDGE_TWO_IP, PORT_THREE), (BRIDGE_THREE_IP, PORT_ONE), (BRIDGE_FOUR_IP ,PORT_TWO)}
-			# 	s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1]) , ( BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1]) ) )  #(msg, ip, port)
-			# elif rowEntry == Bridge_Table[1]:
-			# 	s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1]), (BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))
-			# elif rowEntry == Bridge_Table[2]:
-			# 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			# 	s.sendto(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1]), (BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))
-			# else:
-			# 	'No DP\'s'
 
-	# s1.close() # close socket
-	# s2.close()
-	# s3.close()
 
 	if (ROOT_BRIDGE_ID == BRIDGE_ID):
 		threading.Timer(5.0,sendBPDU,('garbage',)).start()
@@ -248,11 +235,65 @@ def compareMAC(other_bridge_id, local_bridge):
 		return False
 
 def forwardBPDU():
+	global Bridge_Table
+	global ROOT_BRIDGE_ID
+	global DISTANCE_FROM_ROOT
+	global BRIDGE_ID
+	global BRIDGE_PORT_MAPPING_LOCAL
+	global OUTGOING_MESSAGE_NUMBER
+
 	print 'FORWARDING BPDU to'
 	print '------------------------'
 	printBridgeTable()
 	print '========================'
-	sendBPDU('garbage')
+
+	# Outgoing socket
+	s1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s3 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	print 'Outgoing Sockets Created' ## Debugging
+
+	# Define what will be sent in the BPDU. Store the value in message.
+	Y =	ROOT_BRIDGE_ID	 			# Y is the bridge ID of
+	d = DISTANCE_FROM_ROOT	 	 	# d is the cost to reach Y
+	X =	BRIDGE_ID	 	 			# X is the bridge ID of the bridge sending the message.
+
+	bpdu_message = str(Y) + ' ' + str(d) + ' ' + str(X)
+
+	if (not bpdu_message):
+		print 'WARNING SENDING EMPTY BPDU'
+
+	for rowEntry in Bridge_Table:
+		# Broadcast BPDU to DP designated ports
+		if rowEntry[2] == "DP":
+			print 'DP located: ' + str(rowEntry)
+			if rowEntry == Bridge_Table[0]:
+
+				print '\nOutgoing message ' + str(OUTGOING_MESSAGE_NUMBER)
+				OUTGOING_MESSAGE_NUMBER = OUTGOING_MESSAGE_NUMBER + 1
+				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
+				s1.sendto((bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])), (BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1])))  #(msg, ip, port)
+				print 'message sent\n'
+
+			elif rowEntry == Bridge_Table[1]:
+				print '\nOutgoing message ' + str(OUTGOING_MESSAGE_NUMBER)
+				OUTGOING_MESSAGE_NUMBER = OUTGOING_MESSAGE_NUMBER + 1
+				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1])
+				s2.sendto((bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1])), (BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))  #(msg, ip, port)
+				print 'message sent\n'
+
+			elif rowEntry == Bridge_Table[2]:
+
+				print '\nOutgoing message ' + str(OUTGOING_MESSAGE_NUMBER)
+				OUTGOING_MESSAGE_NUMBER = OUTGOING_MESSAGE_NUMBER + 1
+				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1])
+				s3.sendto((bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1])), (BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))  #(msg, ip, port)
+				print 'message sent\n'
+
+			else:
+				print 'No DP\'s'
+
+	print 'End of forwardBPDU: My MAC: ' + str(BRIDGE_ID) + ' Root MAC: ' + str(ROOT_BRIDGE_ID)
 	print 'BPDU FORWARDED '
 	return True
 
@@ -299,7 +340,7 @@ def checkBPDU(data):
 				ROOT_BRIDGE_ID = Y
 				DISTANCE_FROM_ROOT = d + 1
 
-				# Change old RP to BP
+				# Change old RP to DP
 				for rowEntry in Bridge_Table:
 					if rowEntry[2] == 'RP':
 						rowEntry[2] = 'BP'
@@ -310,7 +351,7 @@ def checkBPDU(data):
 						rowEntry[2] = "RP"
 						print 'Root Bridge assigned to table'
 						# printBridgeTable()
-				print str(BRIDGE_ID) + ' no longer root. ' + str(ROOT_BRIDGE_ID) + ' is the NEW ROOT'
+				#print str(BRIDGE_ID) + ' no longer root. ' + str(ROOT_BRIDGE_ID) + ' is the NEW ROOT'
 			# else:
 				# # Change Bridge Table
 				# for rowEntry in Bridge_Table:
@@ -329,17 +370,22 @@ def checkBPDU(data):
 				# Change old RP to BP state
 				for rowEntry in Bridge_Table:
 					if rowEntry[2] == 'RP':
-						rowEntry[2] = 'BP'
+						rowEntry[2] = 'DP'
 				# Update new RP
 				for rowEntry in Bridge_Table:
 					if rowEntry[1] == port:
 						rowEntry[2] = "RP"
+			elif (d == DISTANCE_FROM_ROOT):
+				# Update new RP
+				for rowEntry in Bridge_Table:
+					if rowEntry[1] == port:
+						rowEntry[2] = "BP"
 			else:
 				print 'Other Bridge is Further. Setting port to BP'
 				# Change port to BP in Bridge Table
 				for rowEntry in Bridge_Table:
 					if rowEntry[1] == port:
-						rowEntry[2] = "BP"
+						rowEntry[2] = "DP"
 
 
 		if(BRIDGE_ID != ROOT_BRIDGE_ID):
