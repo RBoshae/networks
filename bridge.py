@@ -58,7 +58,7 @@ elif LOCAL_BRIDGE_IP == BRIDGE_THREE_IP:
 elif LOCAL_BRIDGE_IP == BRIDGE_FOUR_IP:
 	BRIDGE_PORT_MAPPING_LOCAL = BRIDGE_FOUR_PORT_MAPPING
 else:
-	print 'Count not assign port mapping. Check Line 55'
+	print 'Could not assign port mapping. Check Line 51'
 
 # Requirement 3. Each bridge will have a table with the MAC, port
 # number, status where status is either Root Port, Designated Port, of
@@ -71,7 +71,6 @@ Bridge_Table = []
 
 # LOCAL info
 BRIDGE_NAME = ''
-LOCAL_BRIDGE_IP = ''
 BRIDGE_ID = LOCAL_BRIDGE_MAC
 # Root Bridge - Default value of bridge
 DISTANCE_FROM_ROOT = 0
@@ -79,6 +78,7 @@ ROOT_BRIDGE_ID = BRIDGE_ID
 
 # Debugging
 MESSAGE_NUMBER = 0
+OUTGOING_MESSAGE_NUMBER = 0
 
 # Requirement 10
 def printBridgeTable():
@@ -97,6 +97,8 @@ def printBridgeTable():
 	print(Bridge_Table[1])
 	print(Bridge_Table[2])
 
+	return True
+
 # Help method called by setup_bridge.
 def sendBPDU():
 	global Bridge_Table
@@ -104,6 +106,7 @@ def sendBPDU():
 	global DISTANCE_FROM_ROOT
 	global BRIDGE_ID
 	global BRIDGE_PORT_MAPPING_LOCAL
+	global OUTGOING_MESSAGE_NUMBER
 
 	print 'Readying BPDU'
 	# printBridgeTable()
@@ -127,6 +130,7 @@ def sendBPDU():
 		print 'WARNING SENDING EMPTY BPDU'
 
 	for rowEntry in Bridge_Table:
+		# Broadcast BPDU to DP designated ports
 		if rowEntry[2] == "DP":
 			if rowEntry == Bridge_Table[0]:
 				# print 'bpdu data'
@@ -137,32 +141,26 @@ def sendBPDU():
 
 				# print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
 
-				# Reminder BRIDGE_ONE_PORT_MAPPING   = {(BRIDGE_TWO_IP, PORT_THREE), (BRIDGE_THREE_IP, PORT_ONE), (BRIDGE_FOUR_IP ,PORT_TWO)}
-				# s1.connect((BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1])))
-				# s1.send(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1]))  #(msg, ip, port)
-
-				print '\nOutgoing message'
+				print '\nOutgoing message ' + str(OUTGOING_MESSAGE_NUMBER)
+				OUTGOING_MESSAGE_NUMBER = OUTGOING_MESSAGE_NUMBER + 1
 				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])
 				s1.sendto((bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[0][1])), (BRIDGE_PORT_MAPPING_LOCAL[0][0], int(BRIDGE_PORT_MAPPING_LOCAL[0][1])))  #(msg, ip, port)
 				print 'message sent\n'
 
 			elif rowEntry == Bridge_Table[1]:
-				# s2.connect((BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))
-				# s2.send(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1]))
-
-				print '\nOutgoing message'
+				print '\nOutgoing message ' + str(OUTGOING_MESSAGE_NUMBER)
+				OUTGOING_MESSAGE_NUMBER = OUTGOING_MESSAGE_NUMBER + 1
 				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1])
 				s2.sendto((bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[1][1])), (BRIDGE_PORT_MAPPING_LOCAL[1][0], int(BRIDGE_PORT_MAPPING_LOCAL[1][1])))  #(msg, ip, port)
 				print 'message sent\n'
 
 			elif rowEntry == Bridge_Table[2]:
-				# s3.connect((BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))
-				# s3.send(bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1]))
 
-				print 'Outgoing message'
+				print '\nOutgoing message ' + str(OUTGOING_MESSAGE_NUMBER)
+				OUTGOING_MESSAGE_NUMBER = OUTGOING_MESSAGE_NUMBER + 1
 				print bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1])
-				s2.sendto((bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1])), (BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))  #(msg, ip, port)
-				print 'message sent'
+				s3.sendto((bpdu_message + ' ' + str(BRIDGE_PORT_MAPPING_LOCAL[2][1])), (BRIDGE_PORT_MAPPING_LOCAL[2][0], int(BRIDGE_PORT_MAPPING_LOCAL[2][1])))  #(msg, ip, port)
+				print 'message sent\n'
 
 			else:
 				print 'No DP\'s'
@@ -183,21 +181,20 @@ def sendBPDU():
 			# else:
 			# 	'No DP\'s'
 
-	s1.close() # close socket
-	s2.close()
-	s3.close()
+	# s1.close() # close socket
+	# s2.close()
+	# s3.close()
 
 	if (ROOT_BRIDGE_ID == BRIDGE_ID):
 		threading.Timer(5.0,sendBPDU).start()
-		exit()
+		sys.exit()
 	else:
 		print 'End of sendBPDU: I am no longer root. My MAC: ' + str(BRIDGE_ID) + ' Root MAC: ' + str(ROOT_BRIDGE_ID)
+		print 'State of the Table'
+		printBridgeTable()
+		return True
 
-		# Keep main thread alive
-		while 1:
-			pass
-
-	return
+	return True
 
 def compareMAC(other_bridge_id, local_bridge):
 	print 'in compareMAC'                            # Debugging
@@ -243,7 +240,8 @@ def forwardBPDU():
 	printBridgeTable()
 	print '========================'
 	sendBPDU()
-	return
+	print 'BPDU FORWARDED '
+	return True
 
 #Function for handling connections. This will be used to create threads
 def checkBPDU(data):
@@ -282,11 +280,17 @@ def checkBPDU(data):
 		# will be the root.
 		if Y != ROOT_BRIDGE_ID:
 			print 'DIFFERENT ROOT BRIDGE'    # Debugging
-			print 'checking root bridge'	 # Debugging
+			print 'comparing Y with root bridge'	 # Debugging
 			print 'if compareMAC(Y, ROOT_BRIDGE_ID):  ## ' + Y + ' ' + ROOT_BRIDGE_ID
 			if compareMAC(Y, ROOT_BRIDGE_ID): # returns true if left parameter is less than right
 				ROOT_BRIDGE_ID = Y
 				DISTANCE_FROM_ROOT = d + 1
+
+				# Change old RP to BP
+				for rowEntry in Bridge_Table:
+					if rowEntry[2] == 'RP':
+						rowEntry[2] = 'BP'
+
 				# Update port to be root port
 				for rowEntry in Bridge_Table:
 					if rowEntry[1] == port:
@@ -303,29 +307,38 @@ def checkBPDU(data):
 			printBridgeTable() # Debugging
 
 		# Phase 3 Each non-root switch selects its root port
-		if (Y == ROOT_BRIDGE_ID and ROOT_BRIDGE_ID != BRIDGE_ID):
+		elif (Y == ROOT_BRIDGE_ID and ROOT_BRIDGE_ID != BRIDGE_ID):
 			print '\nSAME ROOT BRIDGE'    # Debugging
 			print 'comparing distances ' + str(d) + ' ' + str(DISTANCE_FROM_ROOT)	 # Debugging
 			if(d < DISTANCE_FROM_ROOT):
 				print 'Other Bridge is Closer Setting Port to RP'
-				ROOT_BRIDGE_ID = Y
 				DISTANCE_FROM_ROOT = d + 1
-				# Update Bridge Table
+				# Change old RP to BP state
+				for rowEntry in Bridge_Table:
+					if rowEntry[2] == 'RP':
+						rowEntry[2] = 'BP'
+				# Update new RP
 				for rowEntry in Bridge_Table:
 					if rowEntry[1] == port:
 						rowEntry[2] = "RP"
 			else:
 				print 'Other Bridge is Further. Setting port to BP'
-				# Change Bridge Table
+				# Change port to BP in Bridge Table
 				for rowEntry in Bridge_Table:
 					if rowEntry[1] == port:
 						rowEntry[2] = "BP"
 
+
 		if(BRIDGE_ID != ROOT_BRIDGE_ID):
 			forwardBPDU()
-			return
-		else:
-			print ' Im the Root my thread will respawn shortly.'
+			print 'End of checkBPDU: I am not root. My MAC: ' + str(BRIDGE_ID) + ' Root MAC: ' + str(ROOT_BRIDGE_ID)
+			print 'State of the Table'
+			printBridgeTable()
+			return True
+		# 	return
+		# else:
+		# 	print ' Im the Root my thread will respawn shortly.'
+	return True
 
 
 
@@ -404,13 +417,16 @@ def accept_connections_on_port_three(args):
 # required connections based on the required port map.
 
 def clientThread(conn):
+	print 'Made it to client thread\n'
 	while True:
-		print 'Port listening'
-  		data, addr = conn.recvfrom(512)
+		print 'Port listening...'
+  		data, addr = conn.recvfrom(1024)
+		print 'data received: ' + str(data)
 		if data:
 			#start_new_thread(checkBPDU, (data,) )
+			print 'Calling checkBPDU(data)'
 			checkBPDU(data)
-		# print 'i run forever dude.' # debugging
+		print 'i run forever dude.' # debugging
 	print 'THREAD EXITED'
 
 
@@ -434,6 +450,7 @@ def setup_bridge(Bridge_IP):
 	Bridge_Table.append([LOCAL_BRIDGE_MAC, PORT_THREE, "DP"])
 
 	# Requirement 7 Print each Bridge table state.
+	print 'Initial Table'
 	print Bridge_Table
 	# args = (10,)
 	# start_new_thread(accept_connections_on_port_one, args )
@@ -441,6 +458,11 @@ def setup_bridge(Bridge_IP):
 	# start_new_thread(accept_connections_on_port_two, args)
 	# time.sleep(1)
 	# start_new_thread(accept_connections_on_port_three, args)
+
+
+	# test
+
+
 
 	# Declare Ports and set up socket type
 	Port1_to_Bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -478,6 +500,8 @@ def setup_bridge(Bridge_IP):
 		print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
 		sys.exit()
 	print 'Port 3 waiting for connection'
+
+
 	start_new_thread(clientThread,(Port3_to_Bridge,))
 	# To avoid port reuse problem, the function below is used
 	# Port1_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -496,12 +520,15 @@ def setup_bridge(Bridge_IP):
 	# time.sleep(1)
 	# print 'Start!'
 
+	sendBPDU()
+	print 'End of Setup Bridge reached'
+	return True
 	#now keep talking with the client
 	# threading.Timer(5.0,sendBPDU).start()
-	sendBPDU()
+
 
 if __name__ == '__main__':
 	if len(sys.argv) > 1:
 		print("python Bridge.py")
 		quit(1)
-	setup_bridge(LOCAL_BRIDGE_IP)
+	result = setup_bridge(LOCAL_BRIDGE_IP)
