@@ -18,6 +18,7 @@ print 'global ' + LOCAL_BRIDGE_IP
 macs = commands.getoutput("/sbin/ifconfig | grep -i \"HWaddr\" | awk '{print $5}'")
 macs = macs.split("\n")
 LOCAL_BRIDGE_MAC = macs[0]
+
 print 'global ' + LOCAL_BRIDGE_MAC
 
 # Ports
@@ -39,6 +40,18 @@ BRIDGE_ONE_IP   = "10.0.0.1"
 BRIDGE_TWO_IP   = "10.0.0.2"
 BRIDGE_THREE_IP = "10.0.0.3"
 BRIDGE_FOUR_IP  = "10.0.0.4"
+
+# ADDED TO MATCH PROJECT
+if LOCAL_BRIDGE_IP == BRIDGE_ONE_IP:
+	LOCAL_BRIDGE_MAC = "00:00:00:00:00:00"
+elif LOCAL_BRIDGE_IP == BRIDGE_TWO_IP:
+	LOCAL_BRIDGE_MAC = "01:00:00:00:00:00"
+elif LOCAL_BRIDGE_IP == BRIDGE_THREE_IP:
+	LOCAL_BRIDGE_MAC = "41:00:00:00:00:00"
+elif LOCAL_BRIDGE_IP == BRIDGE_TWO_IP:
+	LOCAL_BRIDGE_MAC = "f1:00:00:00:00:00"
+else:
+	print 'Something went wrong with hardcoding mac'
 
  # PORT Mapping
 BRIDGE_ONE_PORT_MAPPING   = [[BRIDGE_TWO_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_ONE], [BRIDGE_FOUR_IP ,PORT_TWO]]
@@ -100,7 +113,7 @@ def printBridgeTable():
 	return True
 
 # Help method called by setup_bridge.
-def sendBPDU():
+def sendBPDU(args):
 	global Bridge_Table
 	global ROOT_BRIDGE_ID
 	global DISTANCE_FROM_ROOT
@@ -186,7 +199,7 @@ def sendBPDU():
 	# s3.close()
 
 	if (ROOT_BRIDGE_ID == BRIDGE_ID):
-		threading.Timer(5.0,sendBPDU).start()
+		threading.Timer(5.0,sendBPDU,('garbage',)).start()
 		sys.exit()
 	else:
 		print 'End of sendBPDU: I am no longer root. My MAC: ' + str(BRIDGE_ID) + ' Root MAC: ' + str(ROOT_BRIDGE_ID)
@@ -239,7 +252,7 @@ def forwardBPDU():
 	print '------------------------'
 	printBridgeTable()
 	print '========================'
-	sendBPDU()
+	sendBPDU('garbage')
 	print 'BPDU FORWARDED '
 	return True
 
@@ -475,6 +488,7 @@ def setup_bridge(Bridge_IP):
 		print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
 		sys.exit()
 	print 'Port 1 waiting for connection'
+
 	start_new_thread(clientThread,(Port1_to_Bridge,))
 
 
@@ -519,9 +533,14 @@ def setup_bridge(Bridge_IP):
 	# print 'Starting algorithm in 1 seconds'
 	# time.sleep(1)
 	# print 'Start!'
+	args = 'garbage'
 
-	sendBPDU()
+	start_new_thread(sendBPDU,(args,))
+
+	while 1:
+		pass
 	print 'End of Setup Bridge reached'
+
 	return True
 	#now keep talking with the client
 	# threading.Timer(5.0,sendBPDU).start()
