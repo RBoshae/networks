@@ -41,13 +41,9 @@ BRIDGE_THREE_IP = '10.0.0.3'
 BRIDGE_FOUR_IP  = '10.0.0.4'
 
  # PORT Mapping
-# BRIDGE_ONE_PORT_MAPPING   = {(BRIDGE_TWO_IP, PORT_THREE), (BRIDGE_THREE_IP, PORT_ONE), (BRIDGE_FOUR_IP ,PORT_TWO)}
-# BRIDGE_TWO_PORT_MAPPING   = {(BRIDGE_ONE_IP, PORT_THREE), (BRIDGE_THREE_IP,PORT_TWO), (BRIDGE_FOUR_IP, PORT_ONE)}
-# BRIDGE_THREE_PORT_MAPPING = {(BRIDGE_ONE_IP, PORT_ONE), (BRIDGE_FOUR_IP,PORT_TWO), (BRIDGE_FOUR_IP, PORT_THREE)}
-# BRIDGE_FOUR_PORT_MAPPING = {(BRIDGE_ONE_IP, PORT_TWO), (BRIDGE_TWO_IP,PORT_ONE), (BRIDGE_THREE_IP, PORT_THREE)}
 BRIDGE_ONE_PORT_MAPPING   = [[BRIDGE_TWO_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_ONE], [BRIDGE_FOUR_IP ,PORT_TWO]]
 BRIDGE_TWO_PORT_MAPPING   = [[BRIDGE_ONE_IP, PORT_THREE], [BRIDGE_THREE_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_ONE]]
-BRIDGE_THREE_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_ONE], [BRIDGE_FOUR_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_THREE]]
+BRIDGE_THREE_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_ONE], [BRIDGE_TWO_IP, PORT_TWO], [BRIDGE_FOUR_IP, PORT_THREE]]
 BRIDGE_FOUR_PORT_MAPPING = [[BRIDGE_ONE_IP, PORT_TWO], [BRIDGE_TWO_IP, PORT_ONE], [BRIDGE_THREE_IP, PORT_THREE]]
 
 BRIDGE_PORT_MAPPING_LOCAL = []
@@ -92,7 +88,7 @@ def printBridgeTable():
 
 	MESSAGE_NUMBER = MESSAGE_NUMBER + 1
 
-	print '\nMessage ' + str(MESSAGE_NUMBER)
+	print '\nTable Version: ' + str(MESSAGE_NUMBER)
 
 	if (ROOT_BRIDGE_ID == BRIDGE_ID):
 		print 'Root Node'
@@ -102,7 +98,7 @@ def printBridgeTable():
 	print(Bridge_Table[2])
 
 # Help method called by setup_bridge.
-def send_bpdu():
+def sendBPDU():
 	global Bridge_Table
 	global ROOT_BRIDGE_ID
 	global DISTANCE_FROM_ROOT
@@ -192,9 +188,16 @@ def send_bpdu():
 	s3.close()
 
 	if (ROOT_BRIDGE_ID == BRIDGE_ID):
-		threading.Timer(5.0,send_bpdu).start()
+		threading.Timer(5.0,sendBPDU).start()
+		exit()
 	else:
-		print
+		print 'End of sendBPDU: I am no longer root. My MAC: ' + str(BRIDGE_ID) + ' Root MAC: ' + str(ROOT_BRIDGE_ID)
+
+		# Keep main thread alive
+		while 1:
+			pass
+
+	return
 
 def compareMAC(other_bridge_id, local_bridge):
 	print 'in compareMAC'                            # Debugging
@@ -236,8 +239,11 @@ def compareMAC(other_bridge_id, local_bridge):
 
 def forwardBPDU():
 	print 'FORWARDING BPDU to'
+	print '------------------------'
 	printBridgeTable()
-	send_bpdu()
+	print '========================'
+	sendBPDU()
+	return
 
 #Function for handling connections. This will be used to create threads
 def checkBPDU(data):
@@ -317,8 +323,9 @@ def checkBPDU(data):
 
 		if(BRIDGE_ID != ROOT_BRIDGE_ID):
 			forwardBPDU()
+			return
 		else:
-			print ' Im not the root so i should die.'
+			print ' Im the Root my thread will respawn shortly.'
 
 
 
@@ -326,6 +333,9 @@ def accept_connections_on_port_one(args):
 	# Declare Ports and set up socket type
 	Port1_to_Bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	print 'Port 1 to Bridge Socket created.'
+
+	Port1_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 	try:
 		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE)) # ' + LOCAL_HOST + ', ' + str(PORT_ONE) # debugging
 		Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE))
@@ -335,6 +345,7 @@ def accept_connections_on_port_one(args):
 
 	print 'Port 1 waiting for connection'
 	while 1:
+		print 'Port 1 listening'
   		data, addr = Port1_to_Bridge.recvfrom(512)
 		if data:
 			#start_new_thread(checkBPDU, (data,) )
@@ -345,6 +356,9 @@ def accept_connections_on_port_one(args):
 def accept_connections_on_port_two(args):
 	Port2_to_Bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	print 'Port 2 to Bridge Socket created.'
+
+	Port2_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 	try:
 		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_TWO)) # ' + LOCAL_HOST + ', ' + str(PORT_TWO) # debugging
 		Port2_to_Bridge.bind((LOCAL_HOST, PORT_TWO))
@@ -354,30 +368,50 @@ def accept_connections_on_port_two(args):
 
 	print 'Port 2 waiting for connection'
 	while 1:
-  		#data, addr = Port2_to_Bridge.recvfrom(512)
-		checkBPDU(data)
-		start_new_thread(checkBPDU, (data,) )
+		print 'Port 2 listening'
+		data, addr = Port2_to_Bridge.recvfrom(512)
+  		if data:
+			#start_new_thread(checkBPDU, (data,) )
+			checkBPDU(data)
+		# print 'i run forever dude.' # debugging
 	print 'THREAD EXITED'
 
 def accept_connections_on_port_three(args):
 	Port3_to_Bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	print 'Port 3 to Bridge Socket created.'
+
+	Port3_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 	try:
 		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_THREE)) # ' + LOCAL_HOST + ', ' + str(PORT_THREE) # debugging
 		Port3_to_Bridge.bind((LOCAL_HOST, PORT_THREE))
 	except socket.error , msg:
 		print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
 		sys.exit()
+
 	print 'Port 3 waiting for connection'
 	while 1:
-  		#data, addr = Port3_to_Bridge.recvfrom(512)
-		checkBPDU(data)
-		start_new_thread(checkBPDU, (data,) )
+		print 'Port 3 listening'
+  		data, addr = Port3_to_Bridge.recvfrom(512)
+		if data:
+			#start_new_thread(checkBPDU, (data,) )
+			checkBPDU(data)
+		# print 'i run forever dude.' # debugging
 	print 'THREAD EXITED'
 
 
 # setup_bridge identifies the bridge's ip and begins to setting up the
 # required connections based on the required port map.
+
+def clientThread(conn):
+	while True:
+		print 'Port listening'
+  		data, addr = conn.recvfrom(512)
+		if data:
+			#start_new_thread(checkBPDU, (data,) )
+			checkBPDU(data)
+		# print 'i run forever dude.' # debugging
+	print 'THREAD EXITED'
 
 
 def setup_bridge(Bridge_IP):
@@ -401,48 +435,54 @@ def setup_bridge(Bridge_IP):
 
 	# Requirement 7 Print each Bridge table state.
 	print Bridge_Table
-	args = (10,)
-	start_new_thread(accept_connections_on_port_one, args )
-	time.sleep(1)
-	start_new_thread(accept_connections_on_port_two, args)
-	time.sleep(1)
-	start_new_thread(accept_connections_on_port_three, args)
+	# args = (10,)
+	# start_new_thread(accept_connections_on_port_one, args )
+	# time.sleep(1)
+	# start_new_thread(accept_connections_on_port_two, args)
+	# time.sleep(1)
+	# start_new_thread(accept_connections_on_port_three, args)
+
+	# Declare Ports and set up socket type
+	Port1_to_Bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	print 'Port 1 to Bridge Socket created.'
+	Port1_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	try:
+		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE)) # ' + LOCAL_HOST + ', ' + str(PORT_ONE) # debugging
+		Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE))
+	except socket.error , msg:
+		print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
+		sys.exit()
+	print 'Port 1 waiting for connection'
+	start_new_thread(clientThread,(Port1_to_Bridge,))
 
 
+	Port2_to_Bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	print 'Port 2 to Bridge Socket created.'
+	Port2_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	try:
+		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_TWO)) # ' + LOCAL_HOST + ', ' + str(PORT_TWO) # debugging
+		Port2_to_Bridge.bind((LOCAL_HOST, PORT_TWO))
+	except socket.error , msg:
+		print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
+		sys.exit()
+	print 'Port 2 waiting for connection'
+	start_new_thread(clientThread, (Port2_to_Bridge,))
+
+	Port3_to_Bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	print 'Port 3 to Bridge Socket created.'
+	Port3_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	try:
+		print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_THREE)) # ' + LOCAL_HOST + ', ' + str(PORT_THREE) # debugging
+		Port3_to_Bridge.bind((LOCAL_HOST, PORT_THREE))
+	except socket.error , msg:
+		print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
+		sys.exit()
+	print 'Port 3 waiting for connection'
+	start_new_thread(clientThread,(Port3_to_Bridge,))
 	# To avoid port reuse problem, the function below is used
 	# Port1_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	# Port2_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	# Port3_to_Bridge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-	# Binds local socket to port to make sure that (this) is listening for traffic.
-	# try:
-	# 	print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE)) # ' + LOCAL_HOST + ', ' + str(PORT_ONE) # debugging
-	# 	Port1_to_Bridge.bind((LOCAL_HOST, PORT_ONE))
-	# 	print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_TWO)) # ' + LOCAL_HOST + ', ' + str(PORT_TWO) # debugging
-	# 	Port2_to_Bridge.bind((LOCAL_HOST, PORT_TWO))
-	# 	print 'Port1_to_Bridge.bind((LOCAL_HOST, PORT_THREE)) # ' + LOCAL_HOST + ', ' + str(PORT_THREE) # debugging
-	# 	Port3_to_Bridge.bind((LOCAL_HOST, PORT_THREE))
-	# except socket.error , msg:
-	# 	print LOCAL_BRIDGE_IP + 'Bridges Bind failed. Error Code: ' + str(msg[0]) + ' Message ' + msg[1]
-	# 	sys.exit()
-
-
-	# Port1_to_Bridge.listen(10)
-	# print 'Port1 to Bridge Socket now listening'
-	#
-	# Port2_to_Bridge.listen(10)
-	# print 'Port2 to Bridge Socket now listening'
-	#
-	# Port3_to_Bridge.listen(10)
-	# print 'Port3 to Bridge Socket now listening'
-
-	# start_new_thread(accept_connections_on_port_one, (Port1_to_Bridge,))
-	# start_new_thread(accept_connections_on_port_two, (Port2_to_Bridge,))
-	# start_new_thread(accept_connections_on_port_three, (Port3_to_Bridge,))
-
-	# start_new_thread(accept_connections_on_port_one, (Port1_to_Bridge,))
-	# start_new_thread(accept_connections_on_port_two, (Port2_to_Bridge,))
-	# start_new_thread(accept_connections_on_port_three, (Port3_to_Bridge,))
 
 	# print 'Starting algorithm in 10 seconds'
 	# time.sleep(5)
@@ -457,9 +497,8 @@ def setup_bridge(Bridge_IP):
 	# print 'Start!'
 
 	#now keep talking with the client
-	threading.Timer(5.0,send_bpdu).start()
-
-
+	# threading.Timer(5.0,sendBPDU).start()
+	sendBPDU()
 
 if __name__ == '__main__':
 	if len(sys.argv) > 1:
