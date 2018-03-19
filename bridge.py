@@ -293,8 +293,8 @@ def forwardBPDU():
 			else:
 				print 'No DP\'s'
 
-	print 'End of forwardBPDU: My MAC: ' + str(BRIDGE_ID) + ' Root MAC: ' + str(ROOT_BRIDGE_ID)
-	print 'BPDU FORWARDED '
+	# print 'End of forwardBPDU: My MAC: ' + str(BRIDGE_ID) + ' Root MAC: ' + str(ROOT_BRIDGE_ID)
+	# print 'BPDU FORWARDED '
 	return True
 
 #Function for handling connections. This will be used to create threads
@@ -343,7 +343,7 @@ def checkBPDU(data):
 				# Change old RP to DP
 				for rowEntry in Bridge_Table:
 					if rowEntry[2] == 'RP':
-						rowEntry[2] = 'BP'
+						rowEntry[2] = 'DP'
 
 				# Update port to be root port
 				for rowEntry in Bridge_Table:
@@ -369,17 +369,20 @@ def checkBPDU(data):
 				DISTANCE_FROM_ROOT = d + 1
 				# Change old RP to BP state
 				for rowEntry in Bridge_Table:
-					if rowEntry[2] == 'RP':
+					if rowEntry[2] == 'RP' or rowEntry[2] == 'BP' :
 						rowEntry[2] = 'DP'
 				# Update new RP
 				for rowEntry in Bridge_Table:
 					if rowEntry[1] == port:
 						rowEntry[2] = "RP"
 			elif (d == DISTANCE_FROM_ROOT):
+				# # Check if one has a better MAC
+				# if compareMAC(X, )
 				# Update new RP
 				for rowEntry in Bridge_Table:
 					if rowEntry[1] == port:
-						rowEntry[2] = "BP"
+						# forwardBPDU()
+						rowEntry[2] = "BP"    # for sure blocking state
 			else:
 				print 'Other Bridge is Further. Setting port to BP'
 				# Change port to BP in Bridge Table
